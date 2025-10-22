@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ruleset name="Custom"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="./vendor/squizlabs/php_codesniffer/phpcs.xsd">
+
+    <file>./src</file>
+    <file>./tests</file>
+
+    <exclude-pattern>/resources/lang</exclude-pattern>
+    <exclude-pattern>/bootstrap/cache</exclude-pattern>
+
+    <arg name="colors"/>
+    <arg name="parallel" value="16"/>
+    <arg name="report" value="full"/>
+    <arg name="cache" value=".tools/cache/phpcs.json"/>
+    <arg name="extensions" value="php"/>
+    <arg name="severity" value="1"/>
+    <arg value="sp"/>
+
+    <ini name="memory_limit" value="1024M"/>
+
+    <config name="ignore_warnings_on_exit" value="1"/>
+    <config name="installed_paths" value="vendor/slevomat/coding-standard"/>
+
+    <!-- Rules -->
+    <rule ref="Generic.CodeAnalysis.AssignmentInCondition"/>
+    <rule ref="Generic.CodeAnalysis.AssignmentInCondition.Found">
+        <type>error</type>
+    </rule>
+
+    <rule ref="Generic.CodeAnalysis.UnusedFunctionParameter.FoundBeforeLastUsed">
+        <severity>0</severity>
+    </rule>
+
+    <rule ref="Generic.CodeAnalysis.UnusedFunctionParameter.FoundInExtendedClass">
+        <severity>0</severity>
+    </rule>
+
+    <rule ref="Generic.CodeAnalysis.UnusedFunctionParameter.FoundInExtendedClassAfterLastUsed">
+        <severity>0</severity>
+    </rule>
+
+    <rule ref="Generic.CodeAnalysis.UselessOverridingMethod">
+        <type>error</type>
+    </rule>
+
+    <rule ref="Generic.Commenting.Fixme"/>
+    <rule ref="Generic.Commenting.Fixme.TaskFound">
+        <message>🔥 FIXME: %s</message>
+    </rule>
+
+    <rule ref="Generic.Commenting.Todo"/>
+    <rule ref="Generic.Commenting.Todo.TaskFound">
+        <message>🔧 TODO: %s</message>
+    </rule>
+
+    <rule ref="PSR1.Classes.ClassDeclaration.MissingNamespace">
+        <exclude-pattern>database/migrations</exclude-pattern>
+        <exclude-pattern>database/seeds</exclude-pattern> <!-- will be fixed in future Laravel versions -->
+    </rule>
+
+    <rule ref="Squiz.Classes.ClassFileName">
+        <exclude-pattern>database/migrations</exclude-pattern>
+    </rule>
+
+    <rule ref="Squiz.Classes.ValidClassName.NotCamelCaps">
+        <exclude-pattern>database/seeders</exclude-pattern>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Classes.RequireConstructorPropertyPromotion"/>
+
+    <rule ref="SlevomatCodingStandard.Classes.RequireMultiLineMethodSignature">
+      <properties>
+        <property name="minLineLength" value="101"/>
+      </properties>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Classes.RequireSingleLineMethodSignature">
+        <properties>
+            <property name="maxLineLength" value="100"/>
+        </properties>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Classes.RequireSingleLineMethodSignature.RequiredSingleLineSignature">
+        <exclude-pattern>app/Services/CompanyService.php</exclude-pattern>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Arrays.TrailingArrayComma"/>
+
+    <rule ref="SlevomatCodingStandard.Functions.RequireTrailingCommaInCall"/>
+
+    <rule ref="SlevomatCodingStandard.Functions.RequireTrailingCommaInDeclaration"/>
+
+    <rule ref="SlevomatCodingStandard.Classes.SuperfluousInterfaceNaming"/>
+
+    <rule ref="SlevomatCodingStandard.ControlStructures.DisallowTrailingMultiLineTernaryOperator"/>
+
+    <rule ref="SlevomatCodingStandard.ControlStructures.RequireMultiLineCondition"/>
+
+    <rule ref="SlevomatCodingStandard.TypeHints.DisallowArrayTypeHintSyntax"/>
+
+    <rule ref="SlevomatCodingStandard.TypeHints.NullableTypeForNullDefaultValue"/>
+
+    <rule ref="SlevomatCodingStandard.Variables.DisallowVariableVariable"/>
+
+    <rule ref="SlevomatCodingStandard.Variables.DisallowSuperGlobalVariable"/>
+
+    <rule ref="SlevomatCodingStandard.ControlStructures.RequireMultiLineTernaryOperator">
+      <properties>
+        <property name="lineLengthLimit" value="80" />
+      </properties>
+    </rule>
+
+    <rule ref="SlevomatCodingStandard.Variables.DisallowSuperGlobalVariable.DisallowedSuperGlobalVariable"/>
+
+    <rule ref="SlevomatCodingStandard.Variables.DuplicateAssignmentToVariable"/>
+
+    <rule ref="SlevomatCodingStandard.Variables.UselessVariable"/>
+
+    <rule ref="SlevomatCodingStandard.Files.LineLength">
+        <exclude-pattern>config</exclude-pattern>
+    </rule>
+</ruleset>

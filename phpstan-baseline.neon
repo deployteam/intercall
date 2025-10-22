@@ -1,0 +1,199 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method DeployTeam\\Intercall\\Bridge\\GenericRedis\:\:__construct\(\) has parameter \$config with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Bridge/GenericRedis.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(array\{\)\: Unexpected token "@param", expected type at offset 32 on line 3$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Bridge/GenericRedis.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/Console/BaseWorkerCommand.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$event with type DeployTeam\\Intercall\\Contracts\\TEvent is not subtype of native type DeployTeam\\Intercall\\Contracts\\IntercallEvent\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: src/Contracts/EventHandler.php
+
+		-
+			message: '#^Parameter \$event of method DeployTeam\\Intercall\\Contracts\\EventHandler\:\:handle\(\) has invalid type DeployTeam\\Intercall\\Contracts\\TEvent\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Contracts/EventHandler.php
+
+		-
+			message: '#^Method DeployTeam\\Intercall\\Contracts\\IntercallEvent\:\:getPayload\(\) has invalid return type DeployTeam\\Intercall\\Contracts\\TPayload\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Contracts/IntercallEvent.php
+
+		-
+			message: '#^Method DeployTeam\\Intercall\\Contracts\\IntercallEvent\:\:getPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Contracts/IntercallEvent.php
+
+		-
+			message: '#^PHPDoc tag @return with type DeployTeam\\Intercall\\Contracts\\TPayload is incompatible with native type array\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Contracts/IntercallEvent.php
+
+		-
+			message: '#^Method DeployTeam\\Intercall\\Events\\BaseIntercallEvent\:\:getPayload\(\) has invalid return type DeployTeam\\Intercall\\Events\\TPayload\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Events/BaseIntercallEvent.php
+
+		-
+			message: '#^Method DeployTeam\\Intercall\\Events\\BaseIntercallEvent\:\:getPayload\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Events/BaseIntercallEvent.php
+
+		-
+			message: '#^Method DeployTeam\\Intercall\\Events\\BaseIntercallEvent\:\:getPayload\(\) should return array but returns DeployTeam\\Intercall\\Events\\TPayload\.$#'
+			identifier: return.type
+			count: 2
+			path: src/Events/BaseIntercallEvent.php
+
+		-
+			message: '#^PHPDoc tag @return with type DeployTeam\\Intercall\\Events\\TPayload is incompatible with native type array\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Events/BaseIntercallEvent.php
+
+		-
+			message: '#^PHPDoc tag @var contains unknown class DeployTeam\\Intercall\\Events\\TPayload\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/Events/BaseIntercallEvent.php
+
+		-
+			message: '#^PHPDoc tag @var with type DeployTeam\\Intercall\\Events\\TPayload is not subtype of native type array\.$#'
+			identifier: varTag.nativeType
+			count: 2
+			path: src/Events/BaseIntercallEvent.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$event contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Events/RequestReceived.php
+
+		-
+			message: '#^PHPDoc type for property DeployTeam\\Intercall\\Events\\RequestReceived\:\:\$event contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Events/RequestReceived.php
+
+		-
+			message: '#^PHPDoc tag @var for variable \$responseEventClass contains generic type DeployTeam\\Intercall\\Events\\BaseIntercallEvent\<array\<string, mixed\>\> but class DeployTeam\\Intercall\\Events\\BaseIntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Services/CallbackListener.php
+
+		-
+			message: '#^Call to function assert\(\) with true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^Instanceof between DeployTeam\\Intercall\\Contracts\\EventHandler and DeployTeam\\Intercall\\Contracts\\EventHandler will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^Instanceof between DeployTeam\\Intercall\\Contracts\\EventHandler\<DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\>\> and DeployTeam\\Intercall\\Contracts\\EventHandler will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^Instanceof between DeployTeam\\Intercall\\Contracts\\IntercallEvent and DeployTeam\\Intercall\\Contracts\\IntercallEvent will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^PHPDoc tag @var for property DeployTeam\\Intercall\\Services\\EventRegistry\:\:\$asyncMappings contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^PHPDoc tag @var for property DeployTeam\\Intercall\\Services\\EventRegistry\:\:\$eventToClass contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^PHPDoc tag @var for property DeployTeam\\Intercall\\Services\\EventRegistry\:\:\$handlers contains generic type DeployTeam\\Intercall\\Contracts\\EventHandler\<DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\>\> but interface DeployTeam\\Intercall\\Contracts\\EventHandler is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^PHPDoc tag @var for property DeployTeam\\Intercall\\Services\\EventRegistry\:\:\$handlers contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Services/EventRegistry.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$event contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 5
+			path: src/Services/IntercallHub.php
+
+		-
+			message: '#^Call to static method pack\(\) on an unknown class MessagePack\\MessagePack\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Services/MessageSerializer.php
+
+		-
+			message: '#^Call to static method unpack\(\) on an unknown class MessagePack\\MessagePack\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Services/MessageSerializer.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$event contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 3
+			path: src/Services/RequestBuilder.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$event contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 3
+			path: src/Services/RequestDispatcher.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$event contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 3
+			path: src/Services/RequestListener.php
+
+		-
+			message: '#^PHPDoc tag @return contains generic type DeployTeam\\Intercall\\Contracts\\IntercallEvent\<array\<string, mixed\>\> but interface DeployTeam\\Intercall\\Contracts\\IntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Services/RequestListener.php
+
+		-
+			message: '#^PHPDoc tag @var for variable \$eventClass contains generic type DeployTeam\\Intercall\\Events\\BaseIntercallEvent\<array\<string, mixed\>\> but class DeployTeam\\Intercall\\Events\\BaseIntercallEvent is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Services/RequestListener.php

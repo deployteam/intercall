@@ -1,0 +1,103 @@
+{
+  "name": "deployteam/intercall",
+  "description": "Framework-agnostic event-based inter-system communication using Redis and MessagePack",
+  "license": "MIT",
+  "type": "library",
+  "keywords": [
+    "microservices",
+    "inter-system",
+    "communication",
+    "redis",
+    "messagepack",
+    "framework-agnostic"
+  ],
+  "authors": [
+    {
+      "name": "DeployTeam",
+      "email": "hello@deploy.com.ro"
+    }
+  ],
+  "require": {
+    "php": "^8.2",
+    "thecodingmachine/safe": "^3.3"
+  },
+  "require-dev": {
+    "brianium/paratest": "^7.8.4",
+    "ergebnis/composer-normalize": "^2.48.2",
+    "ergebnis/phpstan-rules": "^2.12",
+    "mockery/mockery": "^1.6.12",
+    "php-cs-fixer/shim": "^3.89",
+    "phpstan/phpstan": "^2.1.31",
+    "phpstan/phpstan-deprecation-rules": "^2.0.3",
+    "phpstan/phpstan-strict-rules": "^2.0.7",
+    "phpunit/phpunit": "^11.5.42",
+    "predis/predis": "^2.4",
+    "rector/rector": "^2.2.3",
+    "slevomat/coding-standard": "^8.24",
+    "spaze/phpstan-disallowed-calls": "^4.6",
+    "squizlabs/php_codesniffer": "^4.0",
+    "thecodingmachine/phpstan-safe-rule": "^1.4.1"
+  },
+  "suggest": {
+    "ext-msgpack": "Native msgpack extension for faster serialization (MessageSerializer)",
+    "ext-redis": "Native phpredis extension for better performance (GenericRedis)",
+    "predis/predis": "Pure-PHP Redis client (GenericRedis fallback)"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "autoload": {
+    "psr-4": {
+      "DeployTeam\\Intercall\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "DeployTeam\\Intercall\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": false,
+      "ergebnis/composer-normalize": true
+    }
+  },
+  "scripts": {
+    "lint": [
+      "composer audit --ansi",
+      "composer normalize --ansi --diff --no-check-lock --dry-run",
+      "composer validate",
+      "@rector",
+      "@phpcsfixer",
+      "@phpcs",
+      "@ide-helper",
+      "@phpstan"
+    ],
+    "lint:baseline": [
+      "@phpstan:baseline"
+    ],
+    "lint:clean": [
+      "rm -rf vendor",
+      "@lint:clear-cache",
+      "composer install",
+      "@lint:fix",
+      "@lint"
+    ],
+    "lint:clear-cache": "rm -rf .tools/cache",
+    "lint:fix": [
+      "composer normalize --ansi --diff --no-check-lock",
+      "@rector:fix",
+      "@phpcsfixer:fix",
+      "@phpcs:fix"
+    ],
+    "phpcs": "phpcs",
+    "phpcs:fix": "phpcbf",
+    "phpcsfixer": "@phpcsfixer:fix --dry-run",
+    "phpcsfixer:fix": "php-cs-fixer fix --ansi --verbose --diff",
+    "phpstan": "vendor/bin/phpstan --ansi --memory-limit=4G",
+    "phpstan:baseline": "@phpstan --generate-baseline=phpstan-baseline.neon --allow-empty-baseline",
+    "rector": "@rector:fix --dry-run",
+    "rector:fix": "vendor/bin/rector process --ansi",
+    "test": "paratest --testdox --colors=always",
+    "test:no-coverage": "@test --no-coverage"
+  }
+}

@@ -1,0 +1,60 @@
+includes:
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/spaze/phpstan-disallowed-calls/extension.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-dangerous-calls.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-execution-calls.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-insecure-calls.neon
+    - vendor/spaze/phpstan-disallowed-calls/disallowed-loose-calls.neon
+    - vendor/ergebnis/phpstan-rules/rules.neon
+    - vendor/thecodingmachine/phpstan-safe-rule/phpstan-safe-rule.neon
+    - phpstan-baseline.neon
+
+parameters:
+    tmpDir: .tools/cache/phpstan
+    paths:
+        - src
+
+    # Level 9 is the highest
+    level: 9
+
+    checkUnionTypes: false
+
+    strictRules:
+        dynamicCallOnStaticMethod: false
+        booleansInConditions: false
+        disallowedLooseComparison: true
+
+    ergebnis:
+        noConstructorParameterWithDefaultValue:
+            enabled: false
+        declareStrictTypes:
+            enabled: false
+        final:
+            enabled: false
+        finalInAbstractClass:
+            enabled: false
+        noErrorSuppression:
+            enabled: true
+        noEval:
+            enabled: true
+        noExtends:
+            enabled: false
+        noIsset:
+            enabled: false  # Disabled - isset() is acceptable for array key checking
+        noNullableReturnTypeDeclaration:
+            enabled: false  # Disabled - nullable returns are semantically valid in many cases
+        noParameterWithNullableTypeDeclaration:
+            enabled: false
+        noParameterWithNullDefaultValue:
+            enabled: false
+        noSwitch:
+            enabled: false
+
+    reportUnmatchedIgnoredErrors: true
+
+conditionalTags:
+    PHPStan\Rules\DisallowedConstructs\DisallowedEmptyRule:
+        phpstan.rules.rule: true
+    PHPStan\Rules\DisallowedConstructs\DisallowedShortTernaryRule:
+        phpstan.rules.rule: false
