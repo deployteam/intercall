@@ -2,3 +2,4 @@
 .tools/reports
 vendor/
 .phpunit.cache
+.idea
