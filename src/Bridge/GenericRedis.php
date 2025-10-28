@@ -11,7 +11,7 @@ use Redis as PhpRedis;
 
 class GenericRedis implements Redis
 {
-    private readonly PhpRedis|PredisClient $client;
+    private PhpRedis|PredisClient|null $client = null;
     private readonly bool $useNativePhpRedis;
 
     /**
@@ -22,7 +22,15 @@ class GenericRedis implements Redis
     public function __construct(protected array $config, ?string $driver = null)
     {
         $this->useNativePhpRedis = $this->shouldUsePhpRedis($driver);
-        $this->client = $this->createClient();
+    }
+
+    protected function getClient(): PhpRedis|PredisClient
+    {
+        if ($this->client === null) {
+            $this->client = $this->createClient();
+        }
+
+        return $this->client;
     }
 
     public function isUsingNativePhpRedis(): bool
@@ -34,12 +42,12 @@ class GenericRedis implements Redis
     {
         if ($this->useNativePhpRedis) {
             /** @var PhpRedis $client */
-            $client = $this->client;
+            $client = $this->getClient();
             return $client->lPush($key, $value);
         }
 
         /** @var PredisClient $client */
-        $client = $this->client;
+        $client = $this->getClient();
         return $client->lpush($key, [$value]);
     }
 
@@ -51,7 +59,7 @@ class GenericRedis implements Redis
     {
         if ($this->useNativePhpRedis) {
             /** @var PhpRedis $client */
-            $client = $this->client;
+            $client = $this->getClient();
             $result = $client->brPop($keys, $timeout);
             if ($result === false || !is_array($result) || empty($result)) {
                 return null;
@@ -64,7 +72,7 @@ class GenericRedis implements Redis
         }
 
         /** @var PredisClient $client */
-        $client = $this->client;
+        $client = $this->getClient();
         $result = $client->brpop($keys, $timeout);
         if ($result === null || !is_array($result) || empty($result)) {
             return null;
@@ -83,7 +91,7 @@ class GenericRedis implements Redis
     {
         if ($this->useNativePhpRedis) {
             /** @var PhpRedis $client */
-            $client = $this->client;
+            $client = $this->getClient();
             $result = $client->blPop($keys, $timeout);
             if ($result === false || !is_array($result) || empty($result)) {
                 return null;
@@ -96,7 +104,7 @@ class GenericRedis implements Redis
         }
 
         /** @var PredisClient $client */
-        $client = $this->client;
+        $client = $this->getClient();
         $result = $client->blpop($keys, $timeout);
         if ($result === null || !is_array($result) || empty($result)) {
             return null;
@@ -110,15 +118,15 @@ class GenericRedis implements Redis
     public function setex(string $key, int $ttl, string $value): bool
     {
         if ($this->useNativePhpRedis) {
-            return (bool) $this->client->setex($key, $ttl, $value);
+            return (bool) $this->getClient()->setex($key, $ttl, $value);
         }
 
-        return (bool) $this->client->setex($key, $ttl, $value);
+        return (bool) $this->getClient()->setex($key, $ttl, $value);
     }
 
     public function get(string $key): ?string
     {
-        $result = $this->client->get($key);
+        $result = $this->getClient()->get($key);
         if ($result === false || $result === null) {
             return null;
         }
@@ -128,27 +136,27 @@ class GenericRedis implements Redis
 
     public function exists(string $key): bool
     {
-        return (bool) $this->client->exists($key);
+        return (bool) $this->getClient()->exists($key);
     }
 
     public function incr(string $key): int
     {
-        return $this->client->incr($key);
+        return $this->getClient()->incr($key);
     }
 
     public function expire(string $key, int $ttl): bool
     {
-        return (bool) $this->client->expire($key, $ttl);
+        return (bool) $this->getClient()->expire($key, $ttl);
     }
 
     public function ttl(string $key): int
     {
-        return $this->client->ttl($key);
+        return $this->getClient()->ttl($key);
     }
 
     public function publish(string $channel, string $message): int
     {
-        return $this->client->publish($channel, $message);
+        return $this->getClient()->publish($channel, $message);
     }
 
     /**
@@ -158,20 +166,20 @@ class GenericRedis implements Redis
     {
         if ($this->useNativePhpRedis) {
             /** @var PhpRedis $client */
-            $client = $this->client;
+            $client = $this->getClient();
             $keys = $client->keys($pattern);
             return is_array($keys) ? $keys : [];
         }
 
         /** @var PredisClient $client */
-        $client = $this->client;
+        $client = $this->getClient();
         $keys = $client->keys($pattern);
         return is_array($keys) ? $keys : [];
     }
 
     public function del(string $key): int
     {
-        return (int) $this->client->del($key);
+        return (int) $this->getClient()->del($key);
     }
 
     /**
