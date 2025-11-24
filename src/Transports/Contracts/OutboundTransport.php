@@ -13,4 +13,6 @@ interface OutboundTransport extends Transport
      * @param array<string, mixed> $options
      */
     public function send(string $destination, array $data, array $options = []): TransportResult;
+
+    public function getTimeout(): int;
 }

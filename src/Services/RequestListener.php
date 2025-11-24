@@ -178,6 +178,10 @@ class RequestListener
 
             $event = $this->reconstructEvent($envelope);
 
+            if ($requestType === RequestType::SYNC && $transport instanceof SupportsDirectResponse) {
+                $this->sendAck($requestId, $transport);
+            }
+
             $this->eventDispatcher->dispatch(new RequestReceived($requestId, $sourceSystem, $eventName, $event));
 
             $handler = $this->registry->getHandler($eventName);
@@ -329,6 +333,25 @@ class RequestListener
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    protected function sendAck(
+        string $requestId,
+        InboundTransport $transport,
+    ): void {
+        if (!$transport instanceof SupportsDirectResponse) {
+            throw new LogicException(
+                'Transport does not support direct response channels',
+            );
+        }
+
+        $ackData = ['ack' => true, 'request_id' => $requestId];
+        $serialized = $this->serializer->serialize($ackData);
+        $channel = $this->getAckChannel($requestId, $transport);
+
+        $transport->sendToChannel($channel, $serialized, 5);
+
+        $this->log("Sent ACK for request {$requestId}");
     }
 
     protected function sendResponse(
@@ -488,6 +511,21 @@ class RequestListener
         }
 
         return "{$prefix}:{$systemId}:requests";
+    }
+
+    protected function getAckChannel(string $requestId, InboundTransport $transport): string
+    {
+        $prefix = '';
+
+        if ($transport instanceof TransportHasPrefix) {
+            $prefix = $transport->getPrefix();
+        }
+
+        if ($prefix === '') {
+            $prefix = 'intercall';
+        }
+
+        return "{$prefix}:ack:{$requestId}";
     }
 
     protected function getResponseChannel(string $requestId, InboundTransport $transport): string

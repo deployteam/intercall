@@ -107,4 +107,9 @@ class HttpOutboundTransport implements OutboundTransport
     {
         return $this->config->baseUrl;
     }
+
+    public function getTimeout(): int
+    {
+        return $this->config->timeout;
+    }
 }

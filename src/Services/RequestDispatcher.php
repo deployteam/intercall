@@ -124,12 +124,9 @@ class RequestDispatcher
         }
 
         $lastError = null;
-        $timeoutConfig = $this->config['timeout'] ?? [];
-        assert(is_array($timeoutConfig));
-        $timeout = $timeoutConfig['sync'] ?? 1;
-        assert(is_int($timeout));
 
         foreach ($transports as $transport) {
+            $timeout = (int) ($transport->getTimeout() ?? 30);
             try {
                 if (!$transport->isAvailable()) {
                     $this->logger->info('[Intercall RequestDispatcher] Transport not available, trying next', [
@@ -178,30 +175,54 @@ class RequestDispatcher
                     );
                 }
 
-                $responseChannel = $this->getResponseChannel($requestId, $transport);
+                // Wait for ACK with short timeout (1 second) to confirm remote system received the request
+                $ackChannel = $this->getAckChannel($requestId, $transport);
+                $ackTimeout = 1;
+                $ack = $transport->receiveFromChannel($ackChannel, $ackTimeout);
 
-                $response = $transport->receiveFromChannel($responseChannel, $timeout);
-
-                if ($response === null) {
+                if ($ack === null) {
+                    // No ACK received - remote system may not have received the request
+                    // Safe to retry with next transport if idempotency is enabled
                     $idempotencyConfig = $this->config['idempotency'] ?? [];
                     assert(is_array($idempotencyConfig));
                     $idempotencyEnabled = $idempotencyConfig['enabled'] ?? true;
 
                     if ($idempotencyEnabled) {
-                        $this->logger->warning('[Intercall RequestDispatcher] Response timeout, trying next transport (safe due to idempotency)', [
+                        $this->logger->warning('[Intercall RequestDispatcher] No ACK received, trying next transport', [
                             'transport' => $transport::class,
                             'request_id' => $requestId,
-                            'timeout' => $timeout,
+                            'ack_timeout' => $ackTimeout,
                         ]);
-                        $lastError = "Timeout after {$timeout} seconds";
+                        $lastError = "No ACK received after {$ackTimeout} seconds";
                         continue;
                     }
 
-                    $this->logger->error('[Intercall RequestDispatcher] Response timeout after successful send', [
+                    $this->logger->error('[Intercall RequestDispatcher] No ACK received and idempotency disabled', [
+                        'transport' => $transport::class,
+                        'request_id' => $requestId,
+                        'ack_timeout' => $ackTimeout,
+                    ]);
+                    throw RequestTimeoutException::afterSeconds($ackTimeout);
+                }
+
+                $this->logger->debug('[Intercall RequestDispatcher] ACK received, waiting for response', [
+                    'transport' => $transport::class,
+                    'request_id' => $requestId,
+                ]);
+
+                // ACK received - remote system confirmed it received the request and is processing
+                // Now wait for the actual response with the configured timeout
+                $responseChannel = $this->getResponseChannel($requestId, $transport);
+                $response = $transport->receiveFromChannel($responseChannel, $timeout);
+
+                if ($response === null) {
+                    // ACK was received, so remote system HAS the request and is processing it
+                    // We must NOT retry - that would cause duplicate processing
+                    $this->logger->error('[Intercall RequestDispatcher] Response timeout after ACK received', [
                         'transport' => $transport::class,
                         'request_id' => $requestId,
                         'timeout' => $timeout,
-                        'note' => 'Message was sent but no response received. Cannot retry (idempotency disabled).',
+                        'note' => 'Remote system acknowledged receiving the request. Not retrying to avoid duplicates.',
                     ]);
                     throw RequestTimeoutException::afterSeconds($timeout);
                 }
@@ -348,6 +369,19 @@ class RequestDispatcher
 
             throw $e;
         }
+    }
+
+    protected function getAckChannel(
+        string $requestId,
+        SupportsDirectResponse $transport,
+    ): string {
+        $prefix = 'intercall';
+
+        if ($transport instanceof TransportHasPrefix) {
+            $prefix = $transport->getPrefix();
+        }
+
+        return "{$prefix}:ack:{$requestId}";
     }
 
     protected function getResponseChannel(

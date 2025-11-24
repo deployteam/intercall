@@ -14,7 +14,7 @@ class RedisOutboundConfig implements TransportConfig
         public ?string $password = null,
         public int $database = 0,
         public string $prefix = 'intercall',
-        public ?float $timeout = null,
+        public float $timeout = 30,
     ) {}
 
     public function toArray(): array

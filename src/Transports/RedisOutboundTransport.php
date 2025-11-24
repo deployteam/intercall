@@ -79,6 +79,11 @@ class RedisOutboundTransport implements OutboundTransport, SupportsDirectRespons
         return $this->config->prefix;
     }
 
+    public function getTimeout(): int
+    {
+        return $this->config->timeout;
+    }
+
     public function sendToChannel(string $channel, string $serializedData, int $ttl): void
     {
         $this->redis->lpush($channel, $serializedData);
