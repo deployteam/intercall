@@ -33,6 +33,7 @@ class ListenCommand
         protected array $watchIgnorePatterns = [],
         protected int $watchPollInterval = 1,
         protected int $watchRestartDelay = 1,
+        protected ?string $restartCommand = null,
     ) {}
 
     public function execute(): int
@@ -282,6 +283,126 @@ class ListenCommand
             return 1;
         }
 
+        if ($this->restartCommand !== null) {
+            return $this->handleWithWatchProcess();
+        }
+
+        return $this->handleWithWatchFork();
+    }
+
+    /** @var resource|null */
+    protected mixed $watchProcess = null;
+
+    protected function handleWithWatchProcess(): int
+    {
+        assert($this->restartCommand !== null);
+
+        $watchPaths = $this->getWatchPaths();
+        $lastHashes = $this->getDirectoryHashes($watchPaths);
+
+        $this->output->info('🔄 File watching enabled (process mode). Monitoring: ' . implode(', ', $watchPaths));
+        $this->output->info('💡 Press Ctrl+C to stop');
+        $this->output->newLine();
+
+        $this->registerProcessWatcherSignalHandlers();
+
+        while (true) {
+            $this->output->info('🚀 Starting listener process...');
+
+            $descriptors = [
+                0 => ['pipe', 'r'],
+                1 => ['file', 'php://stdout', 'w'],
+                2 => ['file', 'php://stderr', 'w'],
+            ];
+
+            $this->watchProcess = proc_open($this->restartCommand, $descriptors, $pipes);
+
+            if (!is_resource($this->watchProcess)) {
+                $this->output->error('Failed to start listener process');
+                return 1;
+            }
+
+            fclose($pipes[0]);
+
+            while (true) {
+                sleep($this->watchPollInterval);
+
+                $status = proc_get_status($this->watchProcess);
+
+                if (!$status['running']) {
+                    $this->output->warning('⚠️  Listener process exited unexpectedly. Restarting...');
+                    proc_close($this->watchProcess);
+                    $this->watchProcess = null;
+                    break;
+                }
+
+                $currentHashes = $this->getDirectoryHashes($watchPaths);
+
+                if ($currentHashes !== $lastHashes) {
+                    $this->output->info('📝 File changes detected. Restarting listener...');
+                    $this->stopWatchProcess();
+                    $lastHashes = $currentHashes;
+                    sleep($this->watchRestartDelay);
+                    break;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    protected function registerProcessWatcherSignalHandlers(): void
+    {
+        pcntl_async_signals(true);
+
+        pcntl_signal(SIGTERM, function (): void {
+            $this->output->info('Received SIGTERM signal, shutting down watcher...');
+            $this->stopWatchProcess();
+            exit(0);
+        });
+
+        pcntl_signal(SIGINT, function (): void {
+            $this->output->info('Received SIGINT signal, shutting down watcher...');
+            $this->stopWatchProcess();
+            exit(0);
+        });
+    }
+
+    protected function stopWatchProcess(): void
+    {
+        if ($this->watchProcess === null || !is_resource($this->watchProcess)) {
+            return;
+        }
+
+        $status = proc_get_status($this->watchProcess);
+
+        if (!$status['running']) {
+            proc_close($this->watchProcess);
+            $this->watchProcess = null;
+            return;
+        }
+
+        $pid = $status['pid'];
+        posix_kill($pid, SIGTERM);
+
+        $timeout = time() + 5;
+        while (time() < $timeout) {
+            $status = proc_get_status($this->watchProcess);
+            if (!$status['running']) {
+                proc_close($this->watchProcess);
+                $this->watchProcess = null;
+                return;
+            }
+            usleep(100000);
+        }
+
+        posix_kill($pid, SIGKILL);
+        proc_close($this->watchProcess);
+        $this->watchProcess = null;
+    }
+
+    protected function handleWithWatchFork(): int
+    {
         $this->registerWatcherSignalHandlers();
 
         $watchPaths = $this->getWatchPaths();
