@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace DeployTeam\Intercall\Services;
 
 use DeployTeam\Intercall\Contracts\IntercallEvent;
+use DeployTeam\Intercall\Contracts\IntercallHubContract;
 use DeployTeam\Intercall\Enums\RequestType;
 use Exception;
 
-class IntercallHub
+class IntercallHub implements IntercallHubContract
 {
     /** @param array<string, mixed> $config */
     public function __construct(

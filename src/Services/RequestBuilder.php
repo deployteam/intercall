@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace DeployTeam\Intercall\Services;
 
 use DeployTeam\Intercall\Contracts\IntercallEvent;
+use DeployTeam\Intercall\Contracts\IntercallHubContract;
 
 class RequestBuilder
 {
-    public function __construct(protected IntercallHub $hub, protected string $targetSystem) {}
+    public function __construct(protected IntercallHubContract $hub, protected string $targetSystem) {}
 
     /** @param IntercallEvent<array<string, mixed>> $event */
     public function send(IntercallEvent $event): mixed
