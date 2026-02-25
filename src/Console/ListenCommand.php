@@ -20,6 +20,8 @@ class ListenCommand
 
     protected bool $skipWatch = false;
 
+    protected bool $shouldReload = false;
+
     /**
      * @param array<int, string> $watchPaths
      * @param array<int, string> $watchIgnorePatterns
@@ -34,6 +36,7 @@ class ListenCommand
         protected int $watchPollInterval = 1,
         protected int $watchRestartDelay = 1,
         protected ?string $restartCommand = null,
+        protected ?string $pidFilePath = null,
     ) {}
 
     public function execute(): int
@@ -81,6 +84,7 @@ class ListenCommand
         $this->output->info($this->getStartMessage($workers, $transportId));
 
         if ($workers === 1) {
+            $this->writePidFile();
             $this->registerSignalHandlers();
             $workerId = $this->getWorkerId(1, $transportId);
             $myPid = getmypid();
@@ -93,44 +97,52 @@ class ListenCommand
             return 1;
         }
 
+        $this->writePidFile();
         $this->registerSignalHandlers();
 
-        for ($i = 1; $i <= $workers; $i++) {
-            $pid = pcntl_fork();
+        do {
+            $this->shouldReload = false;
 
-            if ($pid === -1) {
-                $this->output->error($this->getWorkerForkErrorMessage($i));
-                $this->cleanup();
-                return 1;
-            }
+            for ($i = 1; $i <= $workers; $i++) {
+                $pid = pcntl_fork();
 
-            if ($pid === 0) {
-                $this->workerPids = [];
-                $this->registerChildSignalHandlers();
-
-                $workerId = $this->getWorkerId($i, $transportId);
-                $myPid = getmypid();
-                $this->output->info($this->getWorkerStartedMessage($i, $myPid));
-                $this->listener->listenOnTransport($transport, $workerId);
-            }
-
-            $this->workerPids[$i] = $pid;
-        }
-
-        while (count($this->workerPids) > 0) {
-            $status = 0;
-            $pid = pcntl_wait($status);
-
-            if ($pid > 0) {
-                $workerId = array_search($pid, $this->workerPids, true);
-                if ($workerId !== false) {
-                    unset($this->workerPids[$workerId]);
-                    $this->output->warning($this->getWorkerExitedMessage($workerId, $pid));
+                if ($pid === -1) {
+                    $this->output->error($this->getWorkerForkErrorMessage($i));
+                    $this->cleanup();
+                    $this->removePidFile();
+                    return 1;
                 }
+
+                if ($pid === 0) {
+                    $this->workerPids = [];
+                    $this->registerChildSignalHandlers();
+
+                    $workerId = $this->getWorkerId($i, $transportId);
+                    $myPid = getmypid();
+                    $this->output->info($this->getWorkerStartedMessage($i, $myPid));
+                    $this->listener->listenOnTransport($transport, $workerId);
+                }
+
+                $this->workerPids[$i] = $pid;
             }
 
-            usleep(100000);
-        }
+            while (count($this->workerPids) > 0) {
+                $status = 0;
+                $pid = pcntl_wait($status);
+
+                if ($pid > 0) {
+                    $workerId = array_search($pid, $this->workerPids, true);
+                    if ($workerId !== false) {
+                        unset($this->workerPids[$workerId]);
+                        $this->output->warning($this->getWorkerExitedMessage($workerId, $pid));
+                    }
+                }
+
+                usleep(100000);
+            }
+        } while ($this->shouldReload);
+
+        $this->removePidFile();
 
         return 0;
     }
@@ -146,13 +158,27 @@ class ListenCommand
         pcntl_signal(SIGTERM, function (): void {
             $this->output->info('Received SIGTERM signal, shutting down...');
             $this->cleanup();
+            $this->removePidFile();
             exit(0);
         });
 
         pcntl_signal(SIGINT, function (): void {
             $this->output->info('Received SIGINT signal, shutting down...');
             $this->cleanup();
+            $this->removePidFile();
             exit(0);
+        });
+
+        pcntl_signal(SIGUSR1, function (): void {
+            $this->output->info('Received SIGUSR1 signal, reloading...');
+
+            if ($this->workerPids === []) {
+                $this->removePidFile();
+                exit(0);
+            }
+
+            $this->shouldReload = true;
+            $this->cleanup();
         });
     }
 
@@ -205,6 +231,28 @@ class ListenCommand
         }
 
         $this->workerPids = [];
+    }
+
+    protected function writePidFile(): void
+    {
+        if ($this->pidFilePath === null) {
+            return;
+        }
+
+        $directory = dirname($this->pidFilePath);
+
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        file_put_contents($this->pidFilePath, (string) getmypid());
+    }
+
+    protected function removePidFile(): void
+    {
+        if ($this->pidFilePath !== null && file_exists($this->pidFilePath)) {
+            @unlink($this->pidFilePath);
+        }
     }
 
     protected function getWorkerPrefix(): string
