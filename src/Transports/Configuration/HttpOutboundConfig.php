@@ -8,13 +8,14 @@ use LogicException;
 
 class HttpOutboundConfig implements TransportConfig
 {
-    public function __construct(public string $baseUrl, public int $timeout = 30) {}
+    public function __construct(public string $baseUrl, public int $timeout = 30, public bool $insecure = false) {}
 
     public function toArray(): array
     {
         return [
             'base_url' => $this->baseUrl,
             'timeout' => $this->timeout,
+            'insecure' => $this->insecure,
         ];
     }
 
@@ -29,6 +30,8 @@ class HttpOutboundConfig implements TransportConfig
         $timeout = $config['timeout'] ?? 30;
         assert(is_int($timeout));
 
-        return new self(rtrim($baseUrl, '/'), $timeout);
+        $insecure = (bool) ($config['insecure'] ?? false);
+
+        return new self(rtrim($baseUrl, '/'), $timeout, $insecure);
     }
 }

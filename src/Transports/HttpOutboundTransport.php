@@ -50,6 +50,7 @@ class HttpOutboundTransport implements OutboundTransport
                 'headers' => $headers,
                 'json' => $payload,
                 'timeout' => $this->config->timeout,
+                'insecure' => $this->config->insecure,
             ]);
 
             $statusCode = $response->getStatusCode();
