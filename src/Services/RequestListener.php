@@ -129,7 +129,7 @@ class RequestListener
                     ]);
 
                     if ($requestType === RequestType::SYNC) {
-                        $this->sendResponse($requestId, $cached['result'], $cached['error'], $transport);
+                        $this->sendResponse($requestId, $transport, $cached['result'], $cached['error']);
                     } elseif ($requestType === RequestType::ASYNC) {
                         $this->sendCallback($requestId, $sourceSystem, $cached['result'], $cached['error'] === null);
                     }
@@ -162,7 +162,7 @@ class RequestListener
                         ]);
 
                         if ($requestType === RequestType::SYNC) {
-                            $this->sendResponse($requestId, $cached['result'], $cached['error'], $transport);
+                            $this->sendResponse($requestId, $transport, $cached['result'], $cached['error']);
                         } elseif ($requestType === RequestType::ASYNC) {
                             $this->sendCallback($requestId, $sourceSystem, $cached['result'], $cached['error'] === null);
                         }
@@ -199,7 +199,7 @@ class RequestListener
             ]);
 
             if ($requestType !== null && $requestType === RequestType::SYNC) {
-                $this->sendResponse($requestId, null, $e->getMessage(), $transport);
+                $this->sendResponse($requestId, $transport, null, $e->getMessage());
                 $this->idempotency->cacheResponse($requestId, null, $e->getMessage());
             }
 
@@ -279,10 +279,10 @@ class RequestListener
         try {
             assert($handler instanceof EventHandler);
             $result = $handler->handle($event, ['request_id' => $requestId]);
-            $this->sendResponse($requestId, $result, null, $transport);
+            $this->sendResponse($requestId, $transport, $result);
             $this->idempotency->cacheResponse($requestId, $result, null);
         } catch (Throwable $e) {
-            $this->sendResponse($requestId, null, $e->getMessage(), $transport);
+            $this->sendResponse($requestId, $transport, null, $e->getMessage());
             $this->idempotency->cacheResponse($requestId, null, $e->getMessage());
             throw $e;
         }
@@ -356,9 +356,9 @@ class RequestListener
 
     protected function sendResponse(
         string $requestId,
+        InboundTransport $transport,
         mixed $result = null,
         ?string $error = null,
-        InboundTransport $transport,
     ): void {
         if (!$transport instanceof SupportsDirectResponse) {
             throw new LogicException(
