@@ -182,6 +182,18 @@ class GenericRedis implements Redis
         return (int) $this->getClient()->del($key);
     }
 
+    public function disconnect(): void
+    {
+        if ($this->client instanceof PhpRedis) {
+            try {
+                $this->client->close();
+            } catch (\Throwable) {
+            }
+        }
+
+        $this->client = null;
+    }
+
     /**
      * @param string|null $driver
      * @throws RedisConnectionException

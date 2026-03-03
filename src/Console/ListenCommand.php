@@ -118,6 +118,10 @@ class ListenCommand
                     $this->workerPids = [];
                     $this->registerChildSignalHandlers();
 
+                    if (method_exists($transport, 'resetConnection')) {
+                        $transport->resetConnection();
+                    }
+
                     $workerId = $this->getWorkerId($i, $transportId);
                     $myPid = getmypid();
                     $this->output->info($this->getWorkerStartedMessage($i, $myPid));

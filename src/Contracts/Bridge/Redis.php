@@ -40,4 +40,6 @@ interface Redis
     public function keys(string $pattern): array;
 
     public function del(string $key): int;
+
+    public function disconnect(): void;
 }

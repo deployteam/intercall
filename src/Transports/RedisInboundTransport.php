@@ -100,4 +100,9 @@ class RedisInboundTransport implements InboundTransport, SupportsDirectResponse,
     {
         return $this->redis->blpop($channel, $timeout);
     }
+
+    public function resetConnection(): void
+    {
+        $this->redis->disconnect();
+    }
 }
