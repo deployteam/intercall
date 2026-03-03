@@ -37,6 +37,7 @@ class ListenCommand
         protected int $watchRestartDelay = 1,
         protected ?string $restartCommand = null,
         protected ?string $pidFilePath = null,
+        protected int $shutdownTimeout = 5,
     ) {}
 
     public function execute(): int
@@ -171,14 +172,8 @@ class ListenCommand
 
         pcntl_signal(SIGUSR1, function (): void {
             $this->output->info('Received SIGUSR1 signal, reloading...');
-
-            if ($this->workerPids === []) {
-                $this->removePidFile();
-                exit(0);
-            }
-
-            $this->shouldReload = true;
             $this->cleanup();
+            $this->reExecSelf();
         });
     }
 
@@ -188,7 +183,7 @@ class ListenCommand
             return;
         }
 
-        pcntl_async_signals(true);
+        pcntl_async_signals(false);
 
         pcntl_signal(SIGTERM, function (): void {
             exit(0);
@@ -210,7 +205,7 @@ class ListenCommand
             posix_kill($pid, SIGTERM);
         }
 
-        $timeout = time() + 5;
+        $timeout = time() + $this->shutdownTimeout;
         while (count($this->workerPids) > 0 && time() < $timeout) {
             $status = 0;
             $pid = pcntl_waitpid(-1, $status, WNOHANG);
@@ -253,6 +248,29 @@ class ListenCommand
         if ($this->pidFilePath !== null && file_exists($this->pidFilePath)) {
             @unlink($this->pidFilePath);
         }
+    }
+
+    protected function reExecSelf(): void
+    {
+        if ($this->restartCommand === null) {
+            $this->output->warning('No restart command configured, exiting instead of reloading.');
+            $this->removePidFile();
+            exit(0);
+        }
+
+        $this->output->info('Re-executing process...');
+
+        $parts = explode(' ', $this->restartCommand);
+        $binary = array_shift($parts);
+
+        $binary = trim($binary, "'\"");
+        $args = array_map(fn (string $arg): string => trim($arg, "'\""), $parts);
+
+        pcntl_exec($binary, $args);
+
+        $this->output->error('Failed to re-exec, exiting.');
+        $this->removePidFile();
+        exit(1);
     }
 
     protected function getWorkerPrefix(): string
