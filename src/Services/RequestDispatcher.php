@@ -7,7 +7,6 @@ namespace DeployTeam\Intercall\Services;
 use DeployTeam\Intercall\Configuration\RemoteSystemConfig;
 use DeployTeam\Intercall\Configuration\SystemRegistry;
 use DeployTeam\Intercall\Contracts\Bridge\Logger;
-use DeployTeam\Intercall\Contracts\Bridge\Redis;
 use DeployTeam\Intercall\Contracts\IntercallEvent;
 use DeployTeam\Intercall\Enums\AsyncStatus;
 use DeployTeam\Intercall\Enums\RequestType;
@@ -25,7 +24,6 @@ class RequestDispatcher
     /** @param array<string, mixed> $config */
     public function __construct(
         protected TransportManager $transportManager,
-        protected Redis $redis,
         protected Logger $logger,
         protected IntercallAuth $auth,
         protected RateLimiter $rateLimiter,
@@ -127,6 +125,16 @@ class RequestDispatcher
 
         foreach ($transports as $transport) {
             $timeout = (int) ($transport->getTimeout() ?? 30);
+
+            $message['auth_token'] = $this->auth->generateToken(
+                $systemConfig->token,
+                [
+                    'request_id' => $requestId,
+                    'source_system' => $message['source_system'],
+                    'target_system' => $targetSystem,
+                ]
+            );
+
             try {
                 if (!$transport->isAvailable()) {
                     $this->logger->info('[Intercall RequestDispatcher] Transport not available, trying next', [
@@ -160,7 +168,7 @@ class RequestDispatcher
                         throw new RequestFailedException($responseData['error']);
                     }
 
-                    $this->logger->info('[Intercall RequestDispatcher] Sync request completed via HTTP', [
+                    $this->logger->info('[Intercall RequestDispatcher] Sync request completed via direct response', [
                         'transport' => $transport::class,
                         'request_id' => $requestId,
                     ]);
@@ -175,14 +183,11 @@ class RequestDispatcher
                     );
                 }
 
-                // Wait for ACK with short timeout (1 second) to confirm remote system received the request
                 $ackChannel = $this->getAckChannel($requestId, $transport);
-                $ackTimeout = 1;
+                $ackTimeout = (int) ($this->config['ack_timeout'] ?? 1);
                 $ack = $transport->receiveFromChannel($ackChannel, $ackTimeout);
 
                 if ($ack === null) {
-                    // No ACK received - remote system may not have received the request
-                    // Safe to retry with next transport if idempotency is enabled
                     $idempotencyConfig = $this->config['idempotency'] ?? [];
                     assert(is_array($idempotencyConfig));
                     $idempotencyEnabled = $idempotencyConfig['enabled'] ?? true;
@@ -239,7 +244,7 @@ class RequestDispatcher
                     throw new RequestFailedException($responseData['error']);
                 }
 
-                $this->logger->info('[Intercall RequestDispatcher] Sync request completed via Redis', [
+                $this->logger->info('[Intercall RequestDispatcher] Sync request completed via response channel', [
                     'transport' => $transport::class,
                     'request_id' => $requestId,
                 ]);
