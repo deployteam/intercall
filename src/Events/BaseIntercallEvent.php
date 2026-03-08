@@ -10,6 +10,9 @@ use ReflectionClass;
 use ReflectionParameter;
 use ReflectionProperty;
 
+/**
+ * @template TPayload of array<string, mixed>
+ */
 abstract class BaseIntercallEvent implements IntercallEvent
 {
     /**
