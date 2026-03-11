@@ -25,6 +25,7 @@ class ListenCommand
     /**
      * @param array<int, string> $watchPaths
      * @param array<int, string> $watchIgnorePatterns
+     * @param array<int, string>|null $restartCommand
      */
     public function __construct(
         protected RequestListener $listener,
@@ -35,7 +36,7 @@ class ListenCommand
         protected array $watchIgnorePatterns = [],
         protected int $watchPollInterval = 1,
         protected int $watchRestartDelay = 1,
-        protected ?string $restartCommand = null,
+        protected ?array $restartCommand = null,
         protected ?string $pidFilePath = null,
         protected int $shutdownTimeout = 5,
     ) {}
@@ -165,20 +166,20 @@ class ListenCommand
             $this->cleanup();
             $this->removePidFile();
             exit(0);
-        });
+        }, false);
 
         pcntl_signal(SIGINT, function (): void {
             $this->output->info('Received SIGINT signal, shutting down...');
             $this->cleanup();
             $this->removePidFile();
             exit(0);
-        });
+        }, false);
 
         pcntl_signal(SIGUSR1, function (): void {
             $this->output->info('Received SIGUSR1 signal, reloading...');
             $this->cleanup();
             $this->reExecSelf();
-        });
+        }, false);
     }
 
     protected function registerChildSignalHandlers(): void
@@ -256,7 +257,7 @@ class ListenCommand
 
     protected function reExecSelf(): void
     {
-        if ($this->restartCommand === null) {
+        if ($this->restartCommand === null || $this->restartCommand === []) {
             $this->output->warning('No restart command configured, exiting instead of reloading.');
             $this->removePidFile();
             exit(0);
@@ -264,13 +265,10 @@ class ListenCommand
 
         $this->output->info('Re-executing process...');
 
-        $parts = explode(' ', $this->restartCommand);
-        $binary = array_shift($parts);
+        $command = $this->restartCommand;
+        $binary = array_shift($command);
 
-        $binary = trim($binary, "'\"");
-        $args = array_map(fn (string $arg): string => trim($arg, "'\""), $parts);
-
-        pcntl_exec($binary, $args);
+        pcntl_exec($binary, $command);
 
         $this->output->error('Failed to re-exec, exiting.');
         $this->removePidFile();
