@@ -48,7 +48,7 @@ class RateLimiter
 
         $attempts = $this->redis->incr($key);
 
-        if ($attempts === 1) {
+        if ($attempts === 1 || $this->redis->ttl($key) === -1) {
             $this->redis->expire($key, 5);
         }
 
@@ -61,7 +61,7 @@ class RateLimiter
 
         $attempts = $this->redis->incr($key);
 
-        if ($attempts === 1) {
+        if ($attempts === 1 || $this->redis->ttl($key) === -1) {
             $this->redis->expire($key, 60);
         }
 
