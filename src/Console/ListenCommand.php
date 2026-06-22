@@ -85,6 +85,8 @@ class ListenCommand
 
         $this->output->info($this->getStartMessage($workers, $transportId));
 
+        $this->terminateExistingMaster();
+
         if ($workers === 1) {
             $this->writePidFile();
             $this->registerSignalHandlers();
@@ -246,6 +248,47 @@ class ListenCommand
         }
 
         file_put_contents($this->pidFilePath, (string) getmypid());
+    }
+
+    protected function terminateExistingMaster(): void
+    {
+        if ($this->pidFilePath === null || !file_exists($this->pidFilePath) || !extension_loaded('posix')) {
+            return;
+        }
+
+        $existingPid = (int) trim((string) @file_get_contents($this->pidFilePath));
+
+        if ($existingPid <= 0 || $existingPid === getmypid() || !posix_kill($existingPid, 0)) {
+            return;
+        }
+
+        $this->safeWarning("Stale master found at PID {$existingPid}, terminating before start");
+        posix_kill($existingPid, SIGTERM);
+
+        for ($i = 0; $i < 50; $i++) {
+            usleep(100000);
+            if (!posix_kill($existingPid, 0)) {
+                return;
+            }
+        }
+
+        $this->safeWarning("Stale master at PID {$existingPid} did not exit, sending SIGKILL");
+        posix_kill($existingPid, SIGKILL);
+
+        for ($i = 0; $i < 20; $i++) {
+            usleep(100000);
+            if (!posix_kill($existingPid, 0)) {
+                return;
+            }
+        }
+    }
+
+    protected function safeWarning(string $message): void
+    {
+        try {
+            $this->output->warning($message);
+        } catch (\Throwable) {
+        }
     }
 
     protected function removePidFile(): void
