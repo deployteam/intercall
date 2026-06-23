@@ -69,6 +69,7 @@ class RedisInboundTransport implements InboundTransport, SupportsDirectResponse,
                     'error' => $e->getMessage(),
                 ]);
 
+                $this->resetConnection();
                 usleep(100000);
             }
         }
