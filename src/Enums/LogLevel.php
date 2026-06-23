@@ -35,18 +35,24 @@ enum LogLevel: string
         return $this->getPriority() <= $minimumLevel->getPriority();
     }
 
+    public const int VERBOSITY_QUIET = 16;
+    public const int VERBOSITY_NORMAL = 32;
+    public const int VERBOSITY_VERBOSE = 64;
+    public const int VERBOSITY_VERY_VERBOSE = 128;
+    public const int VERBOSITY_DEBUG = 256;
+
     /**
-     * @param int $verbosity The verbosity level from OutputInterface::VERBOSITY_*
+     * @param int $verbosity The verbosity level from Symfony OutputInterface::VERBOSITY_*
      * @return self The corresponding log level
      */
     public static function fromVerbosity(int $verbosity): self
     {
-        return match ($verbosity) {
-            0 => self::NONE,           // VERBOSITY_QUIET
-            1 => self::ERROR,          // VERBOSITY_NORMAL
-            2 => self::WARNING,        // VERBOSITY_VERBOSE (-v)
-            3 => self::INFO,           // VERBOSITY_VERY_VERBOSE (-vv)
-            default => self::DEBUG,    // VERBOSITY_DEBUG (-vvv)
+        return match (true) {
+            $verbosity >= self::VERBOSITY_DEBUG => self::DEBUG,
+            $verbosity >= self::VERBOSITY_VERY_VERBOSE => self::INFO,
+            $verbosity >= self::VERBOSITY_VERBOSE => self::WARNING,
+            $verbosity >= self::VERBOSITY_NORMAL => self::ERROR,
+            default => self::NONE,
         };
     }
 
