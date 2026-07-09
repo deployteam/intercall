@@ -89,11 +89,13 @@ class ListenCommand
 
         if ($workers === 1) {
             $this->writePidFile();
-            $this->registerSignalHandlers();
+            $this->registerSingleWorkerSignalHandlers($transport);
             $workerId = $this->getWorkerId(1, $transportId);
             $myPid = getmypid();
             $this->output->info($this->getWorkerStartedMessage(1, $myPid));
             $this->listener->listenOnTransport($transport, $workerId);
+            $this->removePidFile();
+            return 0;
         }
 
         if (!extension_loaded('pcntl')) {
@@ -119,7 +121,7 @@ class ListenCommand
 
                 if ($pid === 0) {
                     $this->workerPids = [];
-                    $this->registerChildSignalHandlers();
+                    $this->registerChildSignalHandlers($transport);
 
                     if (method_exists($transport, 'resetConnection')) {
                         $transport->resetConnection();
@@ -129,6 +131,8 @@ class ListenCommand
                     $myPid = getmypid();
                     $this->output->info($this->getWorkerStartedMessage($i, $myPid));
                     $this->listener->listenOnTransport($transport, $workerId);
+
+                    exit(0);
                 }
 
                 $this->workerPids[$i] = $pid;
@@ -184,21 +188,40 @@ class ListenCommand
         }, false);
     }
 
-    protected function registerChildSignalHandlers(): void
+    protected function registerChildSignalHandlers(InboundTransport $transport): void
     {
         if (!extension_loaded('pcntl')) {
             return;
         }
 
-        pcntl_async_signals(false);
+        pcntl_async_signals(true);
 
-        pcntl_signal(SIGTERM, function (): void {
-            exit(0);
-        });
+        pcntl_signal(SIGTERM, function () use ($transport): void {
+            $transport->stop();
+        }, false);
 
-        pcntl_signal(SIGINT, function (): void {
-            exit(0);
-        });
+        pcntl_signal(SIGINT, function () use ($transport): void {
+            $transport->stop();
+        }, false);
+    }
+
+    protected function registerSingleWorkerSignalHandlers(InboundTransport $transport): void
+    {
+        if (!extension_loaded('pcntl')) {
+            return;
+        }
+
+        pcntl_async_signals(true);
+
+        pcntl_signal(SIGTERM, function () use ($transport): void {
+            $this->output->info('Received SIGTERM signal, shutting down...');
+            $transport->stop();
+        }, false);
+
+        pcntl_signal(SIGINT, function () use ($transport): void {
+            $this->output->info('Received SIGINT signal, shutting down...');
+            $transport->stop();
+        }, false);
     }
 
     protected function cleanup(): void

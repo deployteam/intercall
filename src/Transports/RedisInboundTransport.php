@@ -17,12 +17,19 @@ use function Safe\pcntl_signal_dispatch;
 
 class RedisInboundTransport implements InboundTransport, SupportsDirectResponse, TransportHasPrefix
 {
+    protected bool $shouldStop = false;
+
     public function __construct(
         protected Redis $redis,
         protected MessageSerializer $serializer,
         protected Logger $logger,
         protected RedisInboundConfig $config,
     ) {}
+
+    public function stop(): void
+    {
+        $this->shouldStop = true;
+    }
 
     public function getId(): string
     {
@@ -34,19 +41,23 @@ class RedisInboundTransport implements InboundTransport, SupportsDirectResponse,
         return $this->config->prefix;
     }
 
-    public function listen(string $channel, callable $callback, array $options = []): never
+    public function listen(string $channel, callable $callback, array $options = []): void
     {
         $this->logger->info('[Intercall Redis] Started listening', [
             'channel' => $channel,
         ]);
 
-        while (true) { // @phpstan-ignore-line while.alwaysTrue - infinite loop is intentional for listener
+        while (!$this->shouldStop) {
             if (extension_loaded('pcntl')) {
                 pcntl_signal_dispatch();
             }
 
+            if ($this->shouldStop) {
+                break;
+            }
+
             try {
-                $message = $this->redis->brpop($channel, $this->config->timeout);
+                $message = $this->redis->brpop($channel, min($this->config->timeout, 1));
 
                 if ($message === null) {
                     continue;

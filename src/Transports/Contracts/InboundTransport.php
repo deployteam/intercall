@@ -12,5 +12,7 @@ interface InboundTransport extends Transport
      * @param callable(array<string, mixed>): void $callback
      * @param array<string, mixed> $options
      */
-    public function listen(string $channel, callable $callback, array $options = []): never;
+    public function listen(string $channel, callable $callback, array $options = []): void;
+
+    public function stop(): void;
 }

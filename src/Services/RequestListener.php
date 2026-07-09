@@ -19,7 +19,6 @@ use DeployTeam\Intercall\Exceptions\Authentication\ReplayAttackException;
 use DeployTeam\Intercall\Exceptions\Authentication\TokenExpiredException;
 use DeployTeam\Intercall\Exceptions\Configuration\MissingTokenException;
 use DeployTeam\Intercall\Exceptions\Configuration\SystemNotConfiguredException;
-use DeployTeam\Intercall\Exceptions\Transport\UnexpectedTransportReturnException;
 use DeployTeam\Intercall\Transports\Contracts\InboundTransport;
 use DeployTeam\Intercall\Transports\Contracts\SupportsDirectResponse;
 use DeployTeam\Intercall\Transports\Contracts\TransportHasPrefix;
@@ -45,7 +44,7 @@ class RequestListener
         protected array $config,
     ) {}
 
-    public function listenOnTransport(InboundTransport $transport, string $workerId): never
+    public function listenOnTransport(InboundTransport $transport, string $workerId): void
     {
         $transportId = $transport->getId();
 
@@ -76,13 +75,6 @@ class RequestListener
         } finally {
             $this->listenerRegistry->unregister($transportId);
         }
-
-        // @codeCoverageIgnoreStart
-        throw UnexpectedTransportReturnException::fromListener(
-            $transportId,
-            'RequestListener',
-        );
-        // @codeCoverageIgnoreEnd
     }
 
     /** @param array<string, mixed> $envelope */
