@@ -110,6 +110,18 @@ class RequestListener
             assert(is_string($sourceSystem));
             $eventName = $envelope['event_name'] ?? 'unknown';
 
+            if ($requestType === RequestType::SYNC && $transport instanceof SupportsDirectResponse) {
+                try {
+                    $this->sendAck($requestId, $transport);
+                } catch (Throwable $ackError) {
+                    $this->logError('Failed to send ACK, continuing processing', [
+                        'worker_id' => $workerId,
+                        'request_id' => $requestId,
+                        'error' => $ackError->getMessage(),
+                    ]);
+                }
+            }
+
             if ($requestType !== RequestType::FIRE_AND_FORGET) {
                 $cached = $this->idempotency->getCachedResponse($requestId);
 
@@ -169,10 +181,6 @@ class RequestListener
             $this->rateLimiter->attempt($sourceSystem);
 
             $event = $this->reconstructEvent($envelope);
-
-            if ($requestType === RequestType::SYNC && $transport instanceof SupportsDirectResponse) {
-                $this->sendAck($requestId, $transport);
-            }
 
             $this->eventDispatcher->dispatch(new RequestReceived($requestId, $sourceSystem, $eventName, $event));
 
