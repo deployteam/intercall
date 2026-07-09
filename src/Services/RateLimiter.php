@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace DeployTeam\Intercall\Services;
 
+use DeployTeam\Intercall\Contracts\Bridge\Logger;
 use DeployTeam\Intercall\Contracts\Bridge\Redis;
 use DeployTeam\Intercall\Exceptions\RateLimit\RateLimitException;
+use RedisException;
 
 class RateLimiter
 {
@@ -14,16 +16,24 @@ class RateLimiter
         protected int $maxRequests = 1000,
         protected int $burstLimit = 50,
         protected string $redisPrefix = 'intercall',
+        protected ?Logger $logger = null,
     ) {}
 
     public function attempt(string $identifier): bool
     {
-        if (!$this->checkBurstLimit($identifier)) {
-            throw RateLimitException::burstLimitExceeded($identifier, $this->burstLimit);
-        }
+        try {
+            if (!$this->checkBurstLimit($identifier)) {
+                throw RateLimitException::burstLimitExceeded($identifier, $this->burstLimit);
+            }
 
-        if (!$this->checkRegularLimit($identifier)) {
-            throw RateLimitException::maxRequestsExceeded($identifier, $this->maxRequests);
+            if (!$this->checkRegularLimit($identifier)) {
+                throw RateLimitException::maxRequestsExceeded($identifier, $this->maxRequests);
+            }
+        } catch (RedisException $e) {
+            $this->logger?->warning('[Intercall RateLimiter] Redis unavailable, failing open', [
+                'identifier' => $identifier,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return true;
