@@ -27,7 +27,7 @@ class IdempotencyManager
             $key = $this->getKey($requestId);
             $cached = $this->redis->get($key);
 
-            if ($cached === null) {
+            if ($cached === null || $cached === '') {
                 return null;
             }
 
