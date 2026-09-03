@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace DeployTeam\Intercall\Contracts;
 
 /**
- * @template TEvent of IntercallEvent
+ * @template TEvent of IntercallEvent = IntercallEvent
  */
 interface EventHandler
 {
