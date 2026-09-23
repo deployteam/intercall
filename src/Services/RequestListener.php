@@ -8,6 +8,7 @@ use DeployTeam\Intercall\Configuration\SystemRegistry;
 use DeployTeam\Intercall\Contracts\Bridge\EventDispatcher;
 use DeployTeam\Intercall\Contracts\Bridge\Logger;
 use DeployTeam\Intercall\Contracts\EventHandler;
+use DeployTeam\Intercall\Contracts\InboundMiddleware;
 use DeployTeam\Intercall\Contracts\IntercallEvent;
 use DeployTeam\Intercall\Enums\AsyncStatus;
 use DeployTeam\Intercall\Enums\RequestType;
@@ -27,7 +28,10 @@ use Throwable;
 
 class RequestListener
 {
-    /** @param array<string, mixed> $config */
+    /**
+     * @param array<string, mixed> $config
+     * @param array<int, InboundMiddleware> $inboundMiddleware
+     */
     public function __construct(
         protected TransportManager $transportManager,
         protected Logger $logger,
@@ -42,6 +46,7 @@ class RequestListener
         protected ListenerRegistry $listenerRegistry,
         protected HeartbeatChecker $heartbeatChecker,
         protected array $config,
+        protected array $inboundMiddleware = [],
     ) {}
 
     public function listenOnTransport(InboundTransport $transport, string $workerId): void
@@ -186,11 +191,13 @@ class RequestListener
 
             $handler = $this->registry->getHandler($eventName);
 
-            match ($requestType) {
-                RequestType::SYNC => $this->handleSync($requestId, $event, $handler, $transport),
-                RequestType::ASYNC => $this->handleAsync($requestId, $sourceSystem, $event, $handler),
-                RequestType::FIRE_AND_FORGET => $this->handleForget($requestId, $event, $handler),
-            };
+            $this->runInboundPipeline($envelope, function () use ($requestType, $requestId, $event, $handler, $sourceSystem, $transport): void {
+                match ($requestType) {
+                    RequestType::SYNC => $this->handleSync($requestId, $event, $handler, $transport),
+                    RequestType::ASYNC => $this->handleAsync($requestId, $sourceSystem, $event, $handler),
+                    RequestType::FIRE_AND_FORGET => $this->handleForget($requestId, $event, $handler),
+                };
+            });
         } catch (Throwable $e) {
             $this->logError('Error processing request', [
                 'worker_id' => $workerId,
@@ -555,4 +562,21 @@ class RequestListener
         $this->logger->error("[Intercall] {$message}", $context);
     }
 
+    /**
+     * @param array<string, mixed> $envelope
+     * @param callable(): void $terminal
+     */
+    protected function runInboundPipeline(array $envelope, callable $terminal): void
+    {
+        $pipeline = $terminal;
+
+        foreach (array_reverse($this->inboundMiddleware) as $middleware) {
+            $next = $pipeline;
+            $pipeline = static function () use ($middleware, $envelope, $next): mixed {
+                return $middleware->handle($envelope, $next);
+            };
+        }
+
+        $pipeline();
+    }
 }

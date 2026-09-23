@@ -8,6 +8,7 @@ use DeployTeam\Intercall\Configuration\RemoteSystemConfig;
 use DeployTeam\Intercall\Configuration\SystemRegistry;
 use DeployTeam\Intercall\Contracts\Bridge\Logger;
 use DeployTeam\Intercall\Contracts\IntercallEvent;
+use DeployTeam\Intercall\Contracts\OutboundMiddleware;
 use DeployTeam\Intercall\Enums\AsyncStatus;
 use DeployTeam\Intercall\Enums\RequestType;
 use DeployTeam\Intercall\Exceptions\Request\RequestFailedException;
@@ -21,7 +22,10 @@ use Throwable;
 
 class RequestDispatcher
 {
-    /** @param array<string, mixed> $config */
+    /**
+     * @param array<string, mixed> $config
+     * @param array<int, OutboundMiddleware> $outboundMiddleware
+     */
     public function __construct(
         protected TransportManager $transportManager,
         protected Logger $logger,
@@ -32,6 +36,7 @@ class RequestDispatcher
         protected SystemRegistry $systemRegistry,
         protected HeartbeatChecker $heartbeatChecker,
         protected array $config,
+        protected array $outboundMiddleware = [],
     ) {}
 
     /** @param IntercallEvent<array<string, mixed>> $event */
@@ -41,22 +46,42 @@ class RequestDispatcher
         $requestId = $this->generateUuid();
         $envelope = $this->createEnvelope($requestId, $targetSystem, $event, $type);
 
-        try {
-            $this->rateLimiter->attempt($currentSystem->name);
-        } catch (Throwable $e) {
-            $this->logError('Rate limit exceeded', [
-                'request_id' => $requestId,
-                'event' => $event->getEventName(),
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
+        return $this->runOutboundPipeline($envelope, function (array &$envelope) use ($currentSystem, $requestId, $targetSystem, $event, $type): mixed {
+            try {
+                $this->rateLimiter->attempt($currentSystem->name);
+            } catch (Throwable $e) {
+                $this->logError('Rate limit exceeded', [
+                    'request_id' => $requestId,
+                    'event' => $event->getEventName(),
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
+            }
+
+            return match ($type) {
+                RequestType::SYNC => $this->dispatchSync($requestId, $targetSystem, $envelope, $event),
+                RequestType::ASYNC => $this->dispatchAsync($requestId, $targetSystem, $envelope),
+                RequestType::FIRE_AND_FORGET => $this->dispatchForget($requestId, $targetSystem, $envelope),
+            };
+        });
+    }
+
+    /**
+     * @param array<string, mixed> $envelope
+     * @param callable(array<string, mixed>&): mixed $terminal
+     */
+    protected function runOutboundPipeline(array &$envelope, callable $terminal): mixed
+    {
+        $pipeline = static fn (): mixed => $terminal($envelope);
+
+        foreach (array_reverse($this->outboundMiddleware) as $middleware) {
+            $next = $pipeline;
+            $pipeline = static function () use ($middleware, &$envelope, $next): mixed {
+                return $middleware->handle($envelope, $next);
+            };
         }
 
-        return match ($type) {
-            RequestType::SYNC => $this->dispatchSync($requestId, $targetSystem, $envelope, $event),
-            RequestType::ASYNC => $this->dispatchAsync($requestId, $targetSystem, $envelope),
-            RequestType::FIRE_AND_FORGET => $this->dispatchForget($requestId, $targetSystem, $envelope),
-        };
+        return $pipeline();
     }
 
     /**
