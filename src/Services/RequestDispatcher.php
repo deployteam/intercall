@@ -7,6 +7,7 @@ namespace DeployTeam\Intercall\Services;
 use DeployTeam\Intercall\Configuration\RemoteSystemConfig;
 use DeployTeam\Intercall\Configuration\SystemRegistry;
 use DeployTeam\Intercall\Contracts\Bridge\Logger;
+use DeployTeam\Intercall\Contracts\IntercallErrorResponse;
 use DeployTeam\Intercall\Contracts\IntercallEvent;
 use DeployTeam\Intercall\Contracts\OutboundMiddleware;
 use DeployTeam\Intercall\Enums\AsyncStatus;
@@ -189,8 +190,8 @@ class RequestDispatcher
                 if ($result instanceof SyncTransportResult) {
                     $responseData = $result->getData();
 
-                    if (isset($responseData['error'])) {
-                        throw new RequestFailedException($responseData['error']);
+                    if (array_key_exists('error', $responseData)) {
+                        throw RequestFailedException::fromRemote($this->parseRemoteError($responseData['error']));
                     }
 
                     $this->logger->info('[Intercall RequestDispatcher] Sync request completed via direct response', [
@@ -265,8 +266,8 @@ class RequestDispatcher
 
                 $responseData = $this->serializer->deserialize($response[1]);
 
-                if (isset($responseData['error'])) {
-                    throw new RequestFailedException($responseData['error']);
+                if (array_key_exists('error', $responseData)) {
+                    throw RequestFailedException::fromRemote($this->parseRemoteError($responseData['error']));
                 }
 
                 $this->logger->info('[Intercall RequestDispatcher] Sync request completed via response channel', [
@@ -444,5 +445,18 @@ class RequestDispatcher
         $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
 
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+
+    protected function parseRemoteError(mixed $raw): IntercallErrorResponse
+    {
+        if (is_array($raw)) {
+            return new IntercallErrorResponse(
+                (string) ($raw['code'] ?? 'error.unhandled'),
+                (string) ($raw['message'] ?? ''),
+                is_array($raw['context'] ?? null) ? $raw['context'] : [],
+            );
+        }
+
+        return new IntercallErrorResponse('error.unhandled', is_string($raw) ? $raw : '');
     }
 }

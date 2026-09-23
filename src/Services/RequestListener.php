@@ -9,7 +9,9 @@ use DeployTeam\Intercall\Contracts\Bridge\EventDispatcher;
 use DeployTeam\Intercall\Contracts\Bridge\Logger;
 use DeployTeam\Intercall\Contracts\EventHandler;
 use DeployTeam\Intercall\Contracts\InboundMiddleware;
+use DeployTeam\Intercall\Contracts\IntercallErrorResponse;
 use DeployTeam\Intercall\Contracts\IntercallEvent;
+use DeployTeam\Intercall\Contracts\IntercallExceptionMapper;
 use DeployTeam\Intercall\Enums\AsyncStatus;
 use DeployTeam\Intercall\Enums\RequestType;
 use DeployTeam\Intercall\Events\AsyncResponseReceived;
@@ -47,7 +49,10 @@ class RequestListener
         protected HeartbeatChecker $heartbeatChecker,
         protected array $config,
         protected array $inboundMiddleware = [],
-    ) {}
+        protected ?IntercallExceptionMapper $exceptionMapper = null,
+    ) {
+        $this->exceptionMapper ??= new ConventionExceptionMapper();
+    }
 
     public function listenOnTransport(InboundTransport $transport, string $workerId): void
     {
@@ -138,9 +143,9 @@ class RequestListener
                     ]);
 
                     if ($requestType === RequestType::SYNC) {
-                        $this->sendResponse($requestId, $transport, $cached['result'], $cached['error']);
+                        $this->sendResponse($requestId, $transport, $cached->result, $cached->error);
                     } elseif ($requestType === RequestType::ASYNC) {
-                        $this->sendCallback($requestId, $sourceSystem, $cached['result'], $cached['error'] === null);
+                        $this->sendCallback($requestId, $sourceSystem, $cached->result, $cached->error === null);
                     }
 
                     return;
@@ -171,9 +176,9 @@ class RequestListener
                         ]);
 
                         if ($requestType === RequestType::SYNC) {
-                            $this->sendResponse($requestId, $transport, $cached['result'], $cached['error']);
+                            $this->sendResponse($requestId, $transport, $cached->result, $cached->error);
                         } elseif ($requestType === RequestType::ASYNC) {
-                            $this->sendCallback($requestId, $sourceSystem, $cached['result'], $cached['error'] === null);
+                            $this->sendCallback($requestId, $sourceSystem, $cached->result, $cached->error === null);
                         }
 
                         return;
@@ -206,8 +211,9 @@ class RequestListener
             ]);
 
             if ($requestType !== null && $requestType === RequestType::SYNC) {
-                $this->sendResponse($requestId, $transport, null, $e->getMessage());
-                $this->idempotency->cacheResponse($requestId, null, $e->getMessage());
+                $error = $this->exceptionMapper->map($e);
+                $this->sendResponse($requestId, $transport, null, $error);
+                $this->idempotency->cacheResponse($requestId, null, $error);
             }
 
             if ($requestType !== null && $requestType === RequestType::ASYNC) {
@@ -289,8 +295,9 @@ class RequestListener
             $this->sendResponse($requestId, $transport, $result);
             $this->idempotency->cacheResponse($requestId, $result, null);
         } catch (Throwable $e) {
-            $this->sendResponse($requestId, $transport, null, $e->getMessage());
-            $this->idempotency->cacheResponse($requestId, null, $e->getMessage());
+            $error = $this->exceptionMapper->map($e);
+            $this->sendResponse($requestId, $transport, null, $error);
+            $this->idempotency->cacheResponse($requestId, null, $error);
             throw $e;
         }
     }
@@ -313,15 +320,25 @@ class RequestListener
             $this->sendCallback($requestId, $sourceSystem, $event->getEventName(), $result, true);
             $this->idempotency->cacheResponse($requestId, $result, null);
         } catch (Throwable $e) {
+            $error = $this->exceptionMapper->map($e);
+
             $this->asyncManager->setStatus($requestId, AsyncStatus::FAILED, [
-                'error' => $e->getMessage(),
+                'error' => [
+                    'code' => $error->code,
+                    'message' => $error->message,
+                    'context' => $error->context,
+                ],
             ]);
 
             $this->sendCallback($requestId, $sourceSystem, $event->getEventName(), [
-                'error' => $e->getMessage(),
+                'error' => [
+                    'code' => $error->code,
+                    'message' => $error->message,
+                    'context' => $error->context,
+                ],
             ], false);
 
-            $this->idempotency->cacheResponse($requestId, null, $e->getMessage());
+            $this->idempotency->cacheResponse($requestId, null, $error);
 
             throw $e;
         }
@@ -365,7 +382,7 @@ class RequestListener
         string $requestId,
         InboundTransport $transport,
         mixed $result = null,
-        ?string $error = null,
+        ?IntercallErrorResponse $error = null,
     ): void {
         if (!$transport instanceof SupportsDirectResponse) {
             throw new LogicException(
@@ -374,7 +391,11 @@ class RequestListener
         }
 
         $responseData = $error !== null
-            ? ['error' => $error]
+            ? ['error' => [
+                'code' => $error->code,
+                'message' => $error->message,
+                'context' => $error->context,
+            ]]
             : ['result' => $result];
 
         $serialized = $this->serializer->serialize($responseData);

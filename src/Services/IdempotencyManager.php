@@ -6,6 +6,7 @@ namespace DeployTeam\Intercall\Services;
 
 use DeployTeam\Intercall\Contracts\Bridge\Logger;
 use DeployTeam\Intercall\Contracts\Bridge\Redis;
+use DeployTeam\Intercall\Contracts\IntercallErrorResponse;
 use Throwable;
 
 class IdempotencyManager
@@ -20,8 +21,7 @@ class IdempotencyManager
         protected array $config,
     ) {}
 
-    /** @return array{result: mixed, error: string|null}|null */
-    public function getCachedResponse(string $requestId): ?array
+    public function getCachedResponse(string $requestId): ?CachedResponse
     {
         try {
             $key = $this->getKey($requestId);
@@ -37,7 +37,18 @@ class IdempotencyManager
                 'request_id' => $requestId,
             ]);
 
-            return $data;
+            $error = null;
+            if (is_array($data['error'] ?? null)) {
+                $error = new IntercallErrorResponse(
+                    (string) ($data['error']['code'] ?? 'error.unhandled'),
+                    (string) ($data['error']['message'] ?? ''),
+                    is_array($data['error']['context'] ?? null) ? $data['error']['context'] : [],
+                );
+            } elseif (is_string($data['error'] ?? null)) {
+                $error = new IntercallErrorResponse('error.unhandled', $data['error']);
+            }
+
+            return new CachedResponse($data['result'] ?? null, $error);
         } catch (Throwable $e) {
             $this->logger->error('[Intercall Idempotency] Failed to retrieve cached response', [
                 'request_id' => $requestId,
@@ -47,7 +58,7 @@ class IdempotencyManager
         }
     }
 
-    public function cacheResponse(string $requestId, mixed $result, ?string $error = null): void
+    public function cacheResponse(string $requestId, mixed $result, ?IntercallErrorResponse $error = null): void
     {
         try {
             $key = $this->getKey($requestId);
@@ -55,7 +66,11 @@ class IdempotencyManager
 
             $data = [
                 'result' => $result,
-                'error' => $error,
+                'error' => $error !== null ? [
+                    'code' => $error->code,
+                    'message' => $error->message,
+                    'context' => $error->context,
+                ] : null,
                 'cached_at' => time(),
             ];
 
