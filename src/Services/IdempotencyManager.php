@@ -23,6 +23,8 @@ class IdempotencyManager
 
     public function getCachedResponse(string $requestId): ?CachedResponse
     {
+        $cached = null;
+
         try {
             $key = $this->getKey($requestId);
             $cached = $this->redis->get($key);
@@ -53,6 +55,9 @@ class IdempotencyManager
             $this->logger->error('[Intercall Idempotency] Failed to retrieve cached response', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
+                'payload_length' => strlen($cached ?? ''),
+                'payload_first_byte' => $cached === null || $cached === '' ? null : bin2hex($cached[0]),
+                'payload_checksum' => $cached === null ? null : sha1($cached),
             ]);
             return null;
         }
