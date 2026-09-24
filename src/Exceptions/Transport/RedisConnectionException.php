@@ -35,4 +35,9 @@ class RedisConnectionException extends TransportException
     {
         return new self('No Redis driver available. Install phpredis extension or run: composer require predis/predis');
     }
+
+    public static function unexpectedReplyType(string $command, string $key, string $type): self
+    {
+        return new self("Redis {$command} for key '{$key}' returned {$type} instead of a string.");
+    }
 }
