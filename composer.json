@@ -19,24 +19,24 @@
   ],
   "require": {
     "php": "^8.2",
-    "thecodingmachine/safe": "^3.3"
+    "thecodingmachine/safe": "^3.4"
   },
   "require-dev": {
-    "brianium/paratest": "^7.8.4",
-    "ergebnis/composer-normalize": "^2.48.2",
-    "ergebnis/phpstan-rules": "^2.12",
-    "mockery/mockery": "^1.6.12",
-    "php-cs-fixer/shim": "^3.89",
-    "phpstan/phpstan": "^2.1.31",
-    "phpstan/phpstan-deprecation-rules": "^2.0.3",
-    "phpstan/phpstan-strict-rules": "^2.0.7",
-    "phpunit/phpunit": "^11.5.42",
-    "predis/predis": "^2.4",
-    "rector/rector": "^2.2.3",
-    "slevomat/coding-standard": "^8.24",
-    "spaze/phpstan-disallowed-calls": "^4.6",
-    "squizlabs/php_codesniffer": "^4.0",
-    "thecodingmachine/phpstan-safe-rule": "^1.4.1"
+    "brianium/paratest": "^7.8.5",
+    "ergebnis/composer-normalize": "^2.53.0",
+    "ergebnis/phpstan-rules": "^2.13.1",
+    "mockery/mockery": "^1.6.15",
+    "php-cs-fixer/shim": "^3.95.27",
+    "phpstan/phpstan": "^2.2.15",
+    "phpstan/phpstan-deprecation-rules": "^2.0.5",
+    "phpstan/phpstan-strict-rules": "^2.0.12",
+    "phpunit/phpunit": "^11.5.56",
+    "predis/predis": "^2.4.1",
+    "rector/rector": "^2.6.7",
+    "slevomat/coding-standard": "^8.31.1",
+    "spaze/phpstan-disallowed-calls": "^4.14",
+    "squizlabs/php_codesniffer": "^4.0.4",
+    "thecodingmachine/phpstan-safe-rule": "^1.4.7"
   },
   "suggest": {
     "ext-msgpack": "Native msgpack extension for faster serialization (MessageSerializer)",
