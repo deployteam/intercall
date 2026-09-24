@@ -73,7 +73,9 @@ class RequestDispatcher
      */
     protected function runOutboundPipeline(array &$envelope, callable $terminal): mixed
     {
-        $pipeline = static fn (): mixed => $terminal($envelope);
+        $pipeline = static function () use (&$envelope, $terminal): mixed {
+            return $terminal($envelope);
+        };
 
         foreach (array_reverse($this->outboundMiddleware) as $middleware) {
             $next = $pipeline;
