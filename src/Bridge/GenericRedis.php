@@ -60,15 +60,8 @@ class GenericRedis implements Redis
         if ($this->useNativePhpRedis) {
             /** @var PhpRedis $client */
             $client = $this->getClient();
-            $result = $client->brPop($keys, $timeout);
-            if ($result === false || !is_array($result) || empty($result)) {
-                return null;
-            }
-            if (!isset($result[0]) || !isset($result[1])) {
-                return null;
-            }
-            /** @var array<int, string> $result */
-            return $result;
+
+            return $this->normalizeBlockingPop($client->brPop($keys, $timeout));
         }
 
         /** @var PredisClient $client */
@@ -92,15 +85,8 @@ class GenericRedis implements Redis
         if ($this->useNativePhpRedis) {
             /** @var PhpRedis $client */
             $client = $this->getClient();
-            $result = $client->blPop($keys, $timeout);
-            if ($result === false || !is_array($result) || empty($result)) {
-                return null;
-            }
-            if (!isset($result[0]) || !isset($result[1])) {
-                return null;
-            }
-            /** @var array<int, string> $result */
-            return $result;
+
+            return $this->normalizeBlockingPop($client->blPop($keys, $timeout));
         }
 
         /** @var PredisClient $client */
@@ -113,6 +99,33 @@ class GenericRedis implements Redis
             return null;
         }
         return [(string) $result[0], (string) $result[1]];
+    }
+
+    /**
+     * A blocking pop is destructive, so a failed call is never re-issued: replaying it
+     * could consume a second message. The client is dropped instead, leaving any unread
+     * reply behind with it, and the caller's next cycle starts on a fresh connection.
+     *
+     * @return array<int, string>|null
+     */
+    private function normalizeBlockingPop(mixed $result): ?array
+    {
+        if ($result === false) {
+            $this->disconnect();
+
+            return null;
+        }
+
+        if (!is_array($result) || $result === []) {
+            return null;
+        }
+
+        if (!isset($result[0]) || !isset($result[1])) {
+            return null;
+        }
+
+        /** @var array<int, string> $result */
+        return $result;
     }
 
     public function setex(string $key, int $ttl, string $value): bool
