@@ -20,6 +20,6 @@ class ConventionExceptionMapper implements IntercallExceptionMapper
             }
         }
 
-        return new IntercallErrorResponse('error.unhandled', $exception->getMessage());
+        return new IntercallErrorResponse(IntercallErrorResponse::UNHANDLED, $exception->getMessage());
     }
 }

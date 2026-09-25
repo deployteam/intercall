@@ -204,14 +204,23 @@ class RequestListener
                 };
             });
         } catch (Throwable $e) {
-            $this->logError('Error processing request', [
-                'worker_id' => $workerId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            $error = $this->exceptionMapper->map($e);
+
+            if ($error->code === IntercallErrorResponse::UNHANDLED) {
+                $this->logError('Error processing request', [
+                    'worker_id' => $workerId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            } else {
+                $this->logDebug('Request answered with error code', [
+                    'worker_id' => $workerId,
+                    'error_code' => $error->code,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             if ($requestType !== null && $requestType === RequestType::SYNC) {
-                $error = $this->exceptionMapper->map($e);
                 $this->sendResponse($requestId, $transport, null, $error);
                 $this->idempotency->cacheResponse($requestId, null, $error);
             }
@@ -581,6 +590,12 @@ class RequestListener
     protected function logError(string $message, array $context = []): void
     {
         $this->logger->error("[Intercall] {$message}", $context);
+    }
+
+    /** @param array<string, mixed> $context */
+    protected function logDebug(string $message, array $context = []): void
+    {
+        $this->logger->debug("[Intercall] {$message}", $context);
     }
 
     /**
