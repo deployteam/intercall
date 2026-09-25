@@ -8,6 +8,7 @@ use DeployTeam\Intercall\Configuration\RemoteSystemConfig;
 use DeployTeam\Intercall\Configuration\SystemRegistry;
 use DeployTeam\Intercall\Contracts\Bridge\Logger;
 use DeployTeam\Intercall\Contracts\IntercallErrorResponse;
+use DeployTeam\Intercall\Contracts\HasResponseTimeout;
 use DeployTeam\Intercall\Contracts\IntercallEvent;
 use DeployTeam\Intercall\Contracts\OutboundMiddleware;
 use DeployTeam\Intercall\Enums\AsyncStatus;
@@ -152,7 +153,9 @@ class RequestDispatcher
         $lastError = null;
 
         foreach ($transports as $transport) {
-            $timeout = (int) ($transport->getTimeout() ?? 30);
+            $timeout = $event instanceof HasResponseTimeout
+                ? $event->getResponseTimeout()
+                : (int) ($transport->getTimeout() ?? 30);
 
             $message['auth_token'] = $this->auth->generateToken(
                 $systemConfig->token,
