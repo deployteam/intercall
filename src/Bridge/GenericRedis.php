@@ -43,12 +43,25 @@ class GenericRedis implements Redis
         if ($this->useNativePhpRedis) {
             /** @var PhpRedis $client */
             $client = $this->getClient();
-            return $client->lPush($key, $value);
+
+            return $this->healOnFailure($client->lPush($key, $value));
         }
 
         /** @var PredisClient $client */
         $client = $this->getClient();
-        return $client->lpush($key, [$value]);
+
+        return $this->healOnFailure($client->lpush($key, [$value]));
+    }
+
+    private function healOnFailure(mixed $result): int|false
+    {
+        if ($result === false) {
+            $this->disconnect();
+
+            return false;
+        }
+
+        return (int) $result;
     }
 
     /**
