@@ -6,6 +6,7 @@ namespace DeployTeam\Intercall\Console;
 
 use DeployTeam\Intercall\Configuration\SystemRegistry;
 use DeployTeam\Intercall\Contracts\Bridge\ConsoleOutput;
+use DeployTeam\Intercall\Contracts\Bridge\Redis;
 use DeployTeam\Intercall\Exceptions\Transport\NoTransportAvailableException;
 use DeployTeam\Intercall\Services\RequestListener;
 use DeployTeam\Intercall\Transports\Contracts\InboundTransport;
@@ -39,6 +40,7 @@ class ListenCommand
         protected ?array $restartCommand = null,
         protected ?string $pidFilePath = null,
         protected int $shutdownTimeout = 5,
+        protected ?Redis $redis = null,
     ) {}
 
     public function execute(): int
@@ -126,6 +128,8 @@ class ListenCommand
                     if (method_exists($transport, 'resetConnection')) {
                         $transport->resetConnection();
                     }
+
+                    $this->redis?->disconnect();
 
                     $workerId = $this->getWorkerId($i, $transportId);
                     $myPid = getmypid();
@@ -556,6 +560,7 @@ class ListenCommand
 
             if ($this->listenerPid === 0) {
                 $this->skipWatch = true;
+                $this->redis?->disconnect();
                 exit($this->execute());
             }
 

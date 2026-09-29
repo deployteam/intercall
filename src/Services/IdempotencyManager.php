@@ -52,13 +52,24 @@ class IdempotencyManager
 
             return new CachedResponse($data['result'] ?? null, $error);
         } catch (Throwable $e) {
+            $payloadReceived = $cached !== null && $cached !== '';
+
             $this->logger->error('[Intercall Idempotency] Failed to retrieve cached response', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
                 'payload_length' => strlen($cached ?? ''),
                 'payload_first_byte' => $cached === null || $cached === '' ? null : bin2hex($cached[0]),
                 'payload_checksum' => $cached === null ? null : sha1($cached),
+                'connection_dropped' => $payloadReceived,
             ]);
+
+            if ($payloadReceived) {
+                try {
+                    $this->redis->disconnect();
+                } catch (Throwable) {
+                }
+            }
+
             return null;
         }
     }
