@@ -238,17 +238,33 @@ class RequestListener
     protected function processCallbackMessage(array $callbackData, string $workerId): void
     {
         try {
-            $requestId = $callbackData['request_id'] ?? 'unknown';
-            assert(is_string($requestId));
+            $requestId = $callbackData['request_id'] ?? null;
+            $sourceSystem = $callbackData['source_system'] ?? null;
+            $authToken = $callbackData['auth_token'] ?? null;
             $result = $callbackData['result'] ?? null;
             $success = $callbackData['success'] ?? false;
+            $eventName = $callbackData['original_event_name'] ?? null;
+
+            if (
+                !is_string($requestId)
+                || !is_string($sourceSystem)
+                || !is_string($authToken)
+                || !is_bool($success)
+                || ($eventName !== null && !is_string($eventName))
+            ) {
+                $this->logError('Rejected callback with invalid payload', [
+                    'worker_id' => $workerId,
+                ]);
+                return;
+            }
+
+            $this->verifyTokenWithMultipleSecrets($authToken, $sourceSystem);
 
             $this->log("Processing callback for request {$requestId}", [
                 'worker_id' => $workerId,
                 'success' => $success,
             ]);
 
-            $eventName = $callbackData['original_event_name'] ?? null;
             $responseEvent = null;
 
             if ($eventName !== null) {
